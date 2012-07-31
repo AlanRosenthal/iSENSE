@@ -330,7 +330,6 @@ function updateTimeModifiedForSession($sid) {
 
 function putData($eid, $sid, $data) {
 	global $db, $mdb;
-	
     //pull meta from experiment
 	$fields = getFields($eid);
 	$field_names = array();
@@ -340,11 +339,12 @@ function putData($eid, $sid, $data) {
 	foreach($fields as $field) {
 		$field_names[] = $field['field_name'];
 	}
-			
     //i think this is a nasty version of if( isset($data) )
 	if(($count = count($data)) > 0) {
         //for each data point (datum)
+        //print_r($data[0]);
 	    foreach($data as $datum) {
+        //print_r($datum . "...");               
 
             //associatiave array that holds data to be entered
     		$row = array();
@@ -352,18 +352,22 @@ function putData($eid, $sid, $data) {
     		for($i = 0; $i < count($field_names); $i++) {
     			$value = $datum[$i];
 
+                                       
+
                 //hackey mongo wierdness
     			if(is_numeric($value) ) {
     				$value = $value + 0;
     			}
 
                 //fill row with values to enter into mongo
+                       // print_r(str_replace(".", "", $field_names[$i])."  ");
     			$row[str_replace(".", "", $field_names[$i])] = $value;
     		}
-
-    		$row['experiment'] = (int) $eid;
+                $row['experiment'] = (int) $eid;
     		$row['session'] = (int) $sid;
-
+                foreach($row as $test) {
+                    print_r($test . ",,,,");
+                }
             //insert row of data into mongo
     		$mdb->insert("e{$eid}", $row);
 

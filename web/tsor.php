@@ -34,7 +34,7 @@ if (isset($_REQUEST['submit'])) {
   $smarty->assign('submission', 'true');
 
   //Grab the posted data
-  $school         = $_REQUEST['school']; 
+  $school         = $_REQUEST['school'];
   $testType       = $_REQUEST['testType'];
   $team           = $_REQUEST['team']; 
   $sessionLoc     = $_REQUEST['sessionLoc'];
@@ -76,10 +76,9 @@ if (isset($_REQUEST['submit'])) {
 
   $data = array(array($_SERVER['REQUEST_TIME'] * 1000,$school . " " .  $team, $testType, $lat, $long, 
                       $temp, $pH, $vernierClarity, $secchiClarity, $disox, $copper, $phosphorus, $airTemp));
-      
-  //print_r($data);
 
   putData($eid, $sid, $data);
+  //print_r($data);
 
   echo "../newvis.php?sessions=" . $sid;
   
