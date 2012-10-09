@@ -1,6 +1,6 @@
-<!--
- * Copyright (c) 2011, iSENSE Project. All rights reserved.
- *
+<?php
+/* Copyright (c) 2011, iSENSE Project. All rights reserved.
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -24,30 +24,61 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
- -->
-<div id="main-full">
-	<div id="details" style="min-height:60px; margin:0px 0px 0px 0px;">
-		<div>
-			{ if $done }
-				<p>You have successfully created a new article. <a href="admin.php?action=newsadd">Click here</a> to create another.</p>
-			{ else }
-				{include file="parts/errors.tpl"}
-				<form method="post">
-					<table width="100%" id="management_table" class="profile">
-						<tr>
-							<td class="heading" valign="top">Title:</td>
-							<td><input type="text" name="title" id="title" /></td>
-						</tr>
-						<tr>
-							<td class="heading" valign="top">Description:</td>
-							<td><textarea cols="60" name="content" id="content" rows="10"></textarea></td>
-						</tr>
-						<tr>
-							<td colspan="2"><input type="submit" name="create" id="create" value="Create"/></td>
-						</tr>
-					</table>
-				</form>
-			{ /if }
-		</div>
-	</div>
-</div>
+ */
+
+require_once '../includes/config.php';
+error_reporting(E_ALL);
+
+$errors = array();
+$result = -1;
+
+if(isset($_POST['action'])){
+    
+    switch($_POST['action']){
+
+        case "save":
+        if(isUser()){
+            
+            $owner = $session->userid;
+            
+            if(isset($_POST['experiment_id'])){
+                
+                $experiment = $_POST['experiment_id'];
+                
+            } else array_push($errors, 'You did not set the experiment ID.');
+            
+            if(isset($_POST['title'])){
+                
+                $title = $_POST['title'];
+                
+            } else array_push($errors, 'You did not set the title.');
+            
+            if(isset($_POST['description'])){
+                
+                $description = $_POST['description'];
+                
+            } else array_push($errors, 'You did not set the description.');
+
+            $data = $_POST['data'];
+
+            $globals = $_POST['globals'];
+
+            if(count($errors) == 0) {
+                $result = storeSavedVis($owner,$experiment,$title,$description,$data,$globals);
+            }
+
+        } else array_push($errors, 'You are not logged in.');
+        break;
+        
+    }
+
+    if(count($errors) > 0) {
+        foreach($errors as $e) {
+            echo  $e . " ";
+        }
+    } else {
+        echo $result;
+    }
+}
+
+?>

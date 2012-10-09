@@ -26,7 +26,7 @@
  * DAMAGE.
  */
  
-function createExperiment($token, $name, $description, $fields, $req_name=1, $req_procedure=1, $req_location=1, $name_prefix=null, $location=null, $defaultJoin = true, $joinKey = "", $defaultBrowse = true, $browseKey = "") {
+function createExperiment($token, $name, $description, $fields, $req_name=1, $req_procedure=1, $req_location=1, $name_prefix=null, $location=null, $srate = -1,$defaultJoin = true, $joinKey = "", $defaultBrowse = true, $browseKey = "") {
 	global $db;
 	
 	$uid = $token['uid'];
@@ -44,7 +44,7 @@ function createExperiment($token, $name, $description, $fields, $req_name=1, $re
 		return false;
 	}
 	
-	$db->query("INSERT INTO experiments ( experiment_id, owner_id, name, description, timecreated, timemodified, default_read, default_join ,req_name, req_procedure, req_location, name_prefix, location) VALUES ( NULL, {$uid}, '{$name}', '{$description}', NOW(), NOW(), {$defaultBrowse}, {$defaultJoin}, '{$req_name}', '{$req_procedure}', '{$req_location}', '{$name_prefix}', '{$location}')");
+	$db->query("INSERT INTO experiments ( experiment_id, owner_id, name, description, timecreated, timemodified, default_read, default_join ,req_name, req_procedure, req_location, name_prefix, location, srate) VALUES ( NULL, {$uid}, '{$name}', '{$description}', NOW(), NOW(), {$defaultBrowse}, {$defaultJoin}, '{$req_name}', '{$req_procedure}', '{$req_location}', '{$name_prefix}', '{$location}',{$srate})");
 
 	if($db->numOfRows) {
 		
@@ -222,7 +222,19 @@ function getExperimentNameFromSession($sid) {
 		return $output[0];
 	}
 	
-	return 'Visualization';
+	return false;
+}
+
+function getExperimentNameFromVisualization($vid) {
+        global $db;
+
+        $output = $db->query("SELECT experiments.name, experiments.experiment_id FROM savedVises, experiments WHERE savedVises.vid = {$vid} AND experiments.experiment_id = savedVises.experiment_id");
+
+        if($db->numOfRows) {
+                return $output[0];
+        }
+
+        return false;
 }
 
 function getNameFromEid( $eid ) {
@@ -637,4 +649,40 @@ function unrecommendExperiment($eid){
     return true;
 }
 
+//Set an experiments default visualization
+function setDefaultVisForExperiment($eid, $vis_type){
+    global $db;
+
+    //The user has to be logged in
+    if(isset($_COOKIE['isense_login'])){
+        
+        //The user has to be the experiment owner or an admin
+        if(isAdmin() || isExperimentOwner($eid)){
+        
+            $sql = "UPDATE experiments SET default_vis=\"{$vis_type}\" WHERE experiment_id = {$eid}";
+        
+            $result = $db->query($sql);
+        
+            if($db->numOfRows){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+//Get an experiments defualt visualization
+function getDefaultVisForExperiment($eid){
+    global $db;
+
+    $sql = "SELECT default_vis FROM experiments where experiment_id={$eid} LIMIT 1";
+
+    $result = $db->query($sql);
+
+    if($db->numOfRows){
+        return $result[0]['default_vis'];
+    }
+
+    return null;
+}
 ?>

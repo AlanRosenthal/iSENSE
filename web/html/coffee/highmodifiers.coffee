@@ -27,26 +27,47 @@
  *
 ###
 
+# Restored saved data
+if data.savedData?
+    hydrate = new Hydrate()
+    globals.extendObject data, (hydrate.parse data.savedData)
+    delete data.savedData
+
+data.types ?= 
+    TIME: 7
+    TEXT: 37
+    GEOSPATIAL: 19
+
+data.units ?=
+    GEOSPATIAL:
+        LATITUDE: 57
+        LONGITUDE: 58
+
+###
+Selects data in an x,y object format of the given group.
+###
 data.xySelector = (xIndex, yIndex, groupIndex) ->
 
     rawData = @dataPoints.filter (dp) =>
-        (String dp[@groupingFieldIndex]).toLowerCase() == @groups[groupIndex]
-
-    if (Number @fields[xIndex].typeID) == 7
+        ((String dp[@groupingFieldIndex]).toLowerCase() == @groups[groupIndex] and
+         dp[xIndex] != null and dp[yIndex] != null)
+    
+    if (Number @fields[xIndex].typeID) is data.types.TIME
         mapFunc = (dp) ->
             obj =
-                x: new Date(dp[xIndex])
-                y: dp[yIndex]
-                name: "Temp"
+                x: new Date(Number dp[xIndex])
+                y: Number dp[yIndex]
+                datapoint: dp
     else
         mapFunc = (dp) ->
             obj =
-                x: dp[xIndex]
-                y: dp[yIndex]
-                name: "Temp"
+                x: Number dp[xIndex]
+                y: Number dp[yIndex]
+                datapoint: dp
 
     mapped = rawData.map mapFunc
     mapped.sort (a, b) -> (a.x - b.x)
+    
     mapped
 
 ###
@@ -121,7 +142,31 @@ data.getMedian = (fieldIndex, groupIndex) ->
             return (rawData[mid - 1] + rawData[mid]) / 2.0
     else
         null
-        
+
+###
+Gets the number of points belonging to fieldIndex and groupIndex
+All included datapoints must pass the given filter (defaults to all datapoints).
+###
+data.getCount = (fieldIndex, groupIndex) ->
+    dataCount = @selector(fieldIndex, groupIndex).length
+
+    return dataCount
+
+###
+Gets the sum of the points belonging to fieldIndex and groupIndex
+All included datapoints must pass the given filter (defaults to all datapoints).
+###
+data.getTotal = (fieldIndex, groupIndex) ->
+    rawData = @selector(fieldIndex, groupIndex);
+
+    if rawData.length > 0
+        total = 0
+        for value in rawData
+            total = total + value
+        return total;
+    else
+        null
+     
 ###
 Gets a list of unique, non-null, stringified vals from the given field index.
 All included datapoints must pass the given filter (defaults to all datapoints).
@@ -133,7 +178,7 @@ data.setGroupIndex = (index) ->
 ###
 Gets a list of unique, non-null, stringified vals from the group field index.
 ###
-data.makeGroups =  ->
+data.makeGroups = ->
     
     result = {}
     
@@ -141,34 +186,50 @@ data.makeGroups =  ->
         if dp[@groupingFieldIndex] isnt null
             result[String(dp[@groupingFieldIndex]).toLowerCase()] = true
         
-    keys for keys of result
+    groups = for keys of result
+        keys
+        
+    groups.sort()
     
 ###
 Gets a list of text field indicies
 ###
-data.textFields = for index, field of data.fields when (Number field.typeID) is 37
+data.textFields = for field, index in data.fields when (Number field.typeID) is data.types.TEXT
     Number index
 
 ###
 Gets a list of time field indicies
 ###
-data.timeFields = for index, field of data.fields when (Number field.typeID) is 7
+data.timeFields = for field, index in data.fields when (Number field.typeID) is data.types.TIME
     Number index
 
 ###
 Gets a list of non-text, non-time field indicies
 ###
-data.normalFields = for index, field of data.fields when (Number field.typeID) not in [37, 7]
+data.normalFields = for field, index in data.fields when (Number field.typeID) not in [data.types.TEXT, data.types.TIME, data.types.GEOSPATIAL]
     Number index
 
 ###
 Gets a list of non-text field indicies
 ###
-data.numericFields = for index, field of data.fields when (Number field.typeID) not in [37]
+data.numericFields = for field, index in data.fields when (Number field.typeID) not in [data.types.TEXT]
     Number index
 
+###
+Gets a list of geolocation field indicies
+###
+data.geoFields = for field, index in data.fields when (Number field.typeID) isnt data.types.GEOSPATIAL
+    Number index
 
 #Field index of grouping field
-data.groupingFieldIndex = 0
+data.groupingFieldIndex ?= 0
 #Array of current groups
-data.groups = data.makeGroups()
+data.groups ?= data.makeGroups()
+
+#Check if data is log safe
+data.logSafe ?= do ->
+    for dataPoint in data.dataPoints
+        for field, fieldIndex in data.fields when fieldIndex in data.normalFields
+            if (Number dataPoint[fieldIndex] <= 0) and (dataPoint[fieldIndex] isnt null)
+                return 0
+    1

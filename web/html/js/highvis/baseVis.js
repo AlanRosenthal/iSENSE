@@ -31,39 +31,293 @@
 
 
 (function() {
-  var keys, _ref, _ref1, _ref2, _ref3,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var keys, vals, _ref, _ref1, _ref2, _ref3,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   if ((_ref = window.globals) == null) {
     window.globals = {};
   }
 
-  if ((_ref1 = globals.groupSelection) == null) {
-    globals.groupSelection = (function() {
-      var _results;
-      _results = [];
-      for (keys in data.groups) {
-        _results.push(Number(keys));
-      }
-      return _results;
-    })();
+  if ((_ref1 = globals.logY) == null) {
+    globals.logY = 0;
   }
 
-  if ((_ref2 = globals.fieldSelection) == null) {
-    globals.fieldSelection = data.normalFields.slice(0, 1);
-  }
-
-  if ((_ref3 = globals.xAxis) == null) {
-    globals.xAxis = data.numericFields[0];
+  if (!(data.savedGlobals != null)) {
+    if ((_ref2 = globals.groupSelection) == null) {
+      globals.groupSelection = (function() {
+        var _i, _len, _ref3, _results;
+        _ref3 = data.groups;
+        _results = [];
+        for (keys = _i = 0, _len = _ref3.length; _i < _len; keys = ++_i) {
+          vals = _ref3[keys];
+          _results.push(Number(keys));
+        }
+        return _results;
+      })();
+    }
+    if ((_ref3 = globals.fieldSelection) == null) {
+      globals.fieldSelection = data.normalFields.slice(0, 1);
+    }
   }
 
   window.BaseVis = (function() {
+
+    function BaseVis(canvas) {
+      this.canvas = canvas;
+    }
+
+    /*
+        Start sequence used by runtime
+    */
+
+
+    BaseVis.prototype.start = function() {
+      this.drawControls();
+      return this.update();
+    };
+
+    /*
+        Update minor state
+            Redraws html controls
+    
+            Derrived classes should overload to reload content.
+    */
+
+
+    BaseVis.prototype.update = function() {};
+
+    /*
+        Default delayed update simply updates
+    */
+
+
+    BaseVis.prototype.delayedUpdate = function() {
+      return this.update();
+    };
+
+    /*
+        Method called when vis resize has begun
+            Defaults to doing nothing.
+    */
+
+
+    BaseVis.prototype.resize = function(newWidth, newHeight) {};
+
+    /*
+        End sequence used by runtime
+            This is called when the user switches away from this vis.
+            Should destroy the chart, hide its canvas and remove controls.
+    */
+
+
+    BaseVis.prototype.end = function() {
+      console.log(console.trace());
+      return alert("BAD IMPLEMENTATION ALERT!\n\nCalled: 'BaseVis.end'\n\nSee logged stack trace in console.");
+    };
+
+    /*
+        Draws controls
+            Derived classes should write control HTML and bind handlers using the method such as drawGroupControls.
+    */
+
+
+    BaseVis.prototype.drawControls = function() {
+      return this.clearControls();
+    };
+
+    /*
+        Clear the controls
+            Unbinds control handlers and clears the HTML elements.
+    */
+
+
+    BaseVis.prototype.clearControls = function() {
+      return ($('#controldiv')).empty();
+    };
+
+    /*
+        Draws group selection controls
+            This includes a series of checkboxes and a selector for the grouping field.
+            The checkbox text color should correspond to the graph color.
+    */
+
+
+    BaseVis.prototype.drawGroupControls = function(startOnGroup) {
+      var controls, counter, fieldIndex, gIndex, group, sel, _i, _j, _len, _len1, _ref4, _ref5, _ref6, _ref7,
+        _this = this;
+      if (startOnGroup == null) {
+        startOnGroup = false;
+      }
+      controls = '<div id="groupControl" class="vis_controls">';
+      controls += "<h3 class='clean_shrink'><a href='#'>Groups:</a></h3>";
+      controls += "<div class='outer_control_div'>";
+      controls += '<div class="inner_control_div"> Group By: ';
+      controls += '<select id="groupSelector" class="control_select">';
+      _ref4 = data.textFields;
+      for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
+        fieldIndex = _ref4[_i];
+        sel = fieldIndex === data.groupingFieldIndex ? 'selected' : '';
+        controls += "<option value='" + (Number(fieldIndex)) + "' " + sel + ">" + data.fields[fieldIndex].fieldName + "</option>";
+      }
+      controls += "</select></div>";
+      counter = 0;
+      _ref5 = data.groups;
+      for (gIndex = _j = 0, _len1 = _ref5.length; _j < _len1; gIndex = ++_j) {
+        group = _ref5[gIndex];
+        controls += "<div class='inner_control_div' style=\"color:" + globals.colors[counter % globals.colors.length] + ";\">";
+        controls += "<input class='group_input' type='checkbox' value='" + gIndex + "' " + ((_ref6 = Number(gIndex), __indexOf.call(globals.groupSelection, _ref6) >= 0) ? "checked" : "") + "/>&nbsp";
+        controls += "" + group;
+        controls += "</div>";
+        counter += 1;
+      }
+      controls += '</div></div>';
+      ($('#controldiv')).append(controls);
+      ($('#groupSelector')).change(function(e) {
+        var element;
+        element = e.target || e.srcElement;
+        data.setGroupIndex(Number(element.value));
+        globals.groupSelection = (function() {
+          var _k, _len2, _ref7, _results;
+          _ref7 = data.groups;
+          _results = [];
+          for (keys = _k = 0, _len2 = _ref7.length; _k < _len2; keys = ++_k) {
+            vals = _ref7[keys];
+            _results.push(Number(keys));
+          }
+          return _results;
+        })();
+        _this.delayedUpdate();
+        return _this.drawControls();
+      });
+      ($('.group_input')).click(function(e) {
+        var selection;
+        selection = [];
+        ($('.group_input')).each(function() {
+          if (this.checked) {
+            return selection.push(Number(this.value));
+          } else {
+
+          }
+        });
+        globals.groupSelection = selection;
+        if (startOnGroup) {
+          return _this.start();
+        } else {
+          return _this.delayedUpdate();
+        }
+      });
+      if ((_ref7 = globals.groupOpen) == null) {
+        globals.groupOpen = 0;
+      }
+      ($('#groupControl')).accordion({
+        collapsible: true,
+        active: globals.groupOpen
+      });
+      return ($('#groupControl > h3')).click(function() {
+        return globals.groupOpen = (globals.groupOpen + 1) % 2;
+      });
+    };
+
+    /*
+        Draws vis saving controls
+    */
+
+
+    BaseVis.prototype.drawSaveControls = function(e) {
+      var controls, _ref4,
+        _this = this;
+      controls = '<div id="saveControl" class="vis_controls">';
+      controls += "<h3 class='clean_shrink'><a href='#'>Saving:</a></h3>";
+      controls += "<div class='outer_control_div' style='text-align:center'>";
+      controls += "<div class='inner_control_div'>";
+      controls += "<button id='saveVisButton' class='save_button'>Save Visualization </button>";
+      controls += "</div>";
+      if (this.chart != null) {
+        controls += "<div class='inner_control_div'>";
+        controls += "<button id='downloadVisButton' class='save_button'> Download Visualization </button>";
+        controls += "</div>";
+        controls += "<div class='inner_control_div'>";
+        controls += "<button id='printVisButton' class='save_button'> Print Visualization </button>";
+        controls += "</div>";
+      }
+      controls += '</div></div>';
+      ($('#controldiv')).append(controls);
+      ($("#saveControl button")).button();
+      ($("#saveVisButton")).click(function() {
+        return globals.verifyUser((function() {
+          return globals.savedVisDialog();
+        }), (function() {
+          return alert('You must be logged in to save a visualization.');
+        }));
+      });
+      ($('#downloadVisButton')).click(function() {
+        return _this.chart.exportChart({
+          type: "image/svg+xml"
+        });
+      });
+      ($('#printVisButton')).click(function() {
+        return _this.chart.print();
+      });
+      if ((_ref4 = globals.saveOpen) == null) {
+        globals.saveOpen = 0;
+      }
+      ($('#saveControl')).accordion({
+        collapsible: true,
+        active: globals.saveOpen
+      });
+      return ($('#saveControl > h3')).click(function() {
+        return globals.saveOpen = (globals.saveOpen + 1) % 2;
+      });
+    };
+
+    /*
+        Hides the control div and remembers its previous size.
+    */
+
+
+    BaseVis.prototype.hideControls = function() {
+      this.controlWidth = ($('#controldiv')).width();
+      ($('#controldiv')).width(0);
+      ($('#controlhider')).hide();
+      return ($('#' + this.canvas)).css({
+        width: ($("#viscontainer")).innerWidth() - (($("#controlhider")).outerWidth() + globals.VIS_MARGIN)
+      });
+    };
+
+    /*
+        Returns the control div with its previous size intact.
+    */
+
+
+    BaseVis.prototype.unhideControls = function() {
+      ($('#controldiv')).width(this.controlWidth);
+      return ($('#controlhider')).show();
+    };
+
+    /*
+        Do any nessisary cleanup work before serialization.
+    */
+
+
+    BaseVis.prototype.serializationCleanup = function() {};
+
+    return BaseVis;
+
+  })();
+
+  window.BaseHighVis = (function(_super) {
+
+    __extends(BaseHighVis, _super);
+
     /*
         Constructor
             Assigns target canvas name
     */
 
-    function BaseVis(canvas) {
+
+    function BaseHighVis(canvas) {
       this.canvas = canvas;
     }
 
@@ -74,62 +328,81 @@
     */
 
 
-    BaseVis.prototype.buildOptions = function() {
-      var count, dummy, field,
+    BaseHighVis.prototype.buildOptions = function() {
+      var self,
         _this = this;
+      self = this;
       this.chartOptions = {
         chart: {
           renderTo: this.canvas,
-          animation: false
+          reflow: false
         },
         credits: {
           enabled: false
         },
+        exporting: {
+          buttons: {
+            exportButton: {
+              enabled: false
+            },
+            printButton: {
+              enabled: false
+            }
+          }
+        },
+        legend: {
+          symbolWidth: 60,
+          itemWidth: 200
+        },
         plotOptions: {
           series: {
+            turboThreshold: Number.MAX_VALUE,
             marker: {
               lineWidth: 1,
               radius: 5
             },
             events: {
-              legendItemClick: function(event) {
-                var index;
-                index = data.normalFields[event.target.index];
-                if (event.target.visible) {
-                  arrayRemove(globals.fieldSelection, index);
-                } else {
-                  globals.fieldSelection.push(index);
-                }
-                return _this.update();
-              }
+              legendItemClick: (function() {
+                return function(event) {
+                  var index;
+                  index = this.options.legendIndex;
+                  if (__indexOf.call(globals.fieldSelection, index) >= 0) {
+                    arrayRemove(globals.fieldSelection, index);
+                  } else {
+                    globals.fieldSelection.push(index);
+                  }
+                  return self.delayedUpdate();
+                };
+              })()
             }
           }
         },
         series: [],
-        title: {}
-      };
-      count = -1;
-      return this.chartOptions.series = (function() {
-        var _i, _len, _ref4, _ref5, _results;
-        _ref4 = data.fields;
-        _results = [];
-        for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
-          field = _ref4[_i];
-          if (!((_ref5 = Number(field.typeID)) !== 37 && _ref5 !== 7)) {
-            continue;
+        title: {},
+        yAxis: {
+          minorTickInterval: 'auto',
+          title: {
+            text: globals.fieldSelection.length !== 1 ? 'Y-Values' : data.fields[globals.fieldSelection[0]].fieldName
           }
-          count += 1;
-          _results.push(dummy = {
-            data: [],
-            color: '#000',
-            marker: {
-              symbol: globals.symbols[count % globals.symbols.length]
-            },
-            name: field.fieldName
-          });
         }
-        return _results;
-      })();
+      };
+      this.chartOptions.xAxis = [];
+      this.chartOptions.xAxis.push({});
+      return this.chartOptions.xAxis.push({
+        lineWidth: 0,
+        categories: ['']
+      });
+    };
+
+    /*
+        Builds the 'fake series' for legend controls.
+            Derrived objects should implement this.
+    */
+
+
+    BaseHighVis.prototype.buildLegendSeries = function() {
+      console.log(console.trace());
+      return alert("BAD IMPLEMENTATION ALERT!\n\nCalled: 'BaseVis.buildLegendSeries'\n\nSee logged stack trace in console.");
     };
 
     /*
@@ -137,28 +410,73 @@
             This is called when the user switched to this vis.
             Should re-build options and the chart itself to ensure sync with global settings.
             This method should also be usable as a 'full update' in that it should destroy the current chart if it exists before generating a fresh one.
+    
+            TODO: Update comment
     */
 
 
-    BaseVis.prototype.start = function() {
-      var index, ser, _i, _len, _ref4;
+    BaseHighVis.prototype.start = function() {
       this.buildOptions();
-      if (this.chart != null) {
-        this.chart.destroy();
-      }
       this.chart = new Highcharts.Chart(this.chartOptions);
-      _ref4 = this.chart.series.slice(0, data.normalFields.length);
-      for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
-        ser = _ref4[_i];
-        index = data.normalFields[ser.index];
-        if (__indexOf.call(globals.fieldSelection, index) >= 0) {
-          ser.show();
-        } else {
-          ser.hide();
-        }
-      }
       ($('#' + this.canvas)).show();
-      return this.update();
+      return BaseHighVis.__super__.start.call(this);
+    };
+
+    /*
+        Update minor state
+            Clears current series and re-loads the legend.
+    
+            Derrived classes should overload to add data drawing.
+    */
+
+
+    BaseHighVis.prototype.update = function() {
+      var options, temp, title, _i, _len, _ref4, _results;
+      title = globals.fieldSelection.length !== 1 ? temp = {
+        text: 'Y-Values'
+      } : temp = {
+        text: data.fields[globals.fieldSelection[0]].fieldName
+      };
+      this.chart.yAxis[0].setTitle(title, false);
+      while (this.chart.series.length !== 0) {
+        this.chart.series[0].remove(false);
+      }
+      _ref4 = this.buildLegendSeries();
+      _results = [];
+      for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
+        options = _ref4[_i];
+        _results.push(this.chart.addSeries(options, false));
+      }
+      return _results;
+    };
+
+    /*
+        Performs an update while displaying the loading text
+    */
+
+
+    BaseHighVis.prototype.delayedUpdate = function() {
+      var mySelf, update;
+      this.chart.showLoading('Loading...');
+      mySelf = this;
+      update = function() {
+        return mySelf.update();
+      };
+      setTimeout(update, 1);
+      return this.chart.hideLoading();
+    };
+
+    /*
+        Method called when vis resize has begun
+            Resize highcharts to match
+    */
+
+
+    BaseHighVis.prototype.resize = function(newWidth, newHeight, duration) {
+      return this.chart.setSize(newWidth, newHeight, {
+        duration: duration,
+        easing: 'linear'
+      });
     };
 
     /*
@@ -168,167 +486,26 @@
     */
 
 
-    BaseVis.prototype.end = function() {
-      this.chart.destroy();
-      this.clearControls();
+    BaseHighVis.prototype.end = function() {
+      if (this.chart != null) {
+        this.chart.destroy();
+        this.chart = void 0;
+      }
       return ($('#' + this.canvas)).hide();
     };
 
     /*
-        Update minor state
-            Should update the hidden status based on both high-charts legend action and control checkboxes.
+        Remove the chart and chart options object
     */
 
 
-    BaseVis.prototype.update = function() {
-      var fieldIndex, groupIndex, index, _i, _ref4, _results;
-      this.clearControls();
-      this.drawControls();
-      _results = [];
-      for (index = _i = 0, _ref4 = this.chart.series.length - data.normalFields.length; 0 <= _ref4 ? _i < _ref4 : _i > _ref4; index = 0 <= _ref4 ? ++_i : --_i) {
-        fieldIndex = data.normalFields[index % data.normalFields.length];
-        groupIndex = Math.floor(index / data.normalFields.length);
-        if ((__indexOf.call(globals.groupSelection, groupIndex) >= 0) && (__indexOf.call(globals.fieldSelection, fieldIndex) >= 0)) {
-          this.chart.series[index + data.normalFields.length].setVisible(true, false);
-        } else {
-          this.chart.series[index + data.normalFields.length].setVisible(false, false);
-        }
-        _results.push(this.chart.redraw());
-      }
-      return _results;
+    BaseHighVis.prototype.serializationCleanup = function() {
+      delete this.chart;
+      return delete this.chartOptions;
     };
 
-    /*
-        Clear the controls
-            Unbinds control handlers and clears the HTML elements.
-    */
+    return BaseHighVis;
 
-
-    BaseVis.prototype.clearControls = function() {
-      return ($('#controldiv')).html('');
-    };
-
-    /*
-        Draws controls
-            Derived classes should write control HTML and bind handlers using the methods defined below.
-    */
-
-
-    BaseVis.prototype.drawControls = function() {
-      console.log(console.trace());
-      return alert("BAD IMPLEMENTATION ALERT!\n\nCalled: 'BaseVis.drawControls'\n\nSee logged stack trace in console.");
-    };
-
-    /*
-        Draws group selection controls
-            This includes a series of checkboxes and a selector for the grouping field.
-            The checkbox text color should correspond to the graph color.
-    */
-
-
-    BaseVis.prototype.drawGroupControls = function() {
-      var controls, counter, fieldIndex, gIndex, group, _i, _len, _ref4, _ref5, _ref6,
-        _this = this;
-      controls = '<div id="groupControl" class="vis_controls">';
-      controls += '<table class="vis_control_table"><tr><td class="vis_control_table_title">Groups:</tr></td>';
-      controls += '<tr><td><div class="vis_control_table_div">';
-      controls += '<select class="group_selector">';
-      _ref4 = data.textFields;
-      for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
-        fieldIndex = _ref4[_i];
-        controls += "<option value=\"" + (Number(fieldIndex)) + "\">" + data.fields[fieldIndex].fieldName + "</option>";
-      }
-      controls += "</select></div></td></tr>";
-      counter = 0;
-      _ref5 = data.groups;
-      for (gIndex in _ref5) {
-        group = _ref5[gIndex];
-        controls += '<tr><td>';
-        controls += "<div class=\"vis_control_table_div\" style=\"color:" + globals.colors[counter] + ";\">";
-        controls += "<input class='group_input' type='checkbox' value='" + gIndex + "' " + ((_ref6 = Number(gIndex), __indexOf.call(globals.groupSelection, _ref6) >= 0) ? "checked" : "") + "/>&nbsp";
-        controls += "" + group + "&nbsp";
-        controls += "</div></td></tr>";
-        counter += 1;
-      }
-      controls += '</table></div>';
-      ($('#controldiv')).append(controls);
-      ($('.group_selector')).change(function(e) {
-        var element, _ref7;
-        element = e.target || e.srcElement;
-        data.setGroupIndex(Number(element.value));
-        if ((_ref7 = globals.groupSelection) == null) {
-          globals.groupSelection = (function() {
-            var _results;
-            _results = [];
-            for (keys in data.groups) {
-              _results.push(Number(keys));
-            }
-            return _results;
-          })();
-        }
-        return _this.start();
-      });
-      return ($('.group_input')).click(function(e) {
-        var selection;
-        selection = [];
-        ($('.group_input')).each(function() {
-          if (this.checked) {
-            console.log('checked');
-            return selection.push(Number(this.value));
-          } else {
-            return console.log('unchecked');
-          }
-        });
-        globals.groupSelection = selection;
-        return _this.update();
-      });
-    };
-
-    /*
-        Draws x axis selection controls
-            This includes a series of radio buttons.
-    */
-
-
-    BaseVis.prototype.drawXAxisControls = function() {
-      var controls, field,
-        _this = this;
-      controls = '<div id="xAxisControl" class="vis_controls">';
-      controls += '<table class="vis_control_table"><tr><td class="vis_control_table_title">X Axis:</tr></td>';
-      for (field in data.fields) {
-        if ((Number(data.fields[field].typeID)) !== 37) {
-          controls += '<tr><td>';
-          controls += '<div class="vis_control_table_div">';
-          controls += "<input class=\"xAxis_input\" type=\"radio\" name=\"xaxis\" value=\"" + field + "\" " + ((Number(field)) === globals.xAxis ? "checked" : "") + "></input>&nbsp";
-          controls += "" + data.fields[field].fieldName + "&nbsp";
-          controls += "</div></td></tr>";
-        }
-      }
-      controls += '</table></div>';
-      ($('#controldiv')).append(controls);
-      return ($('.xAxis_input')).click(function(e) {
-        var selection;
-        selection = null;
-        ($('.xAxis_input')).each(function() {
-          if (this.checked) {
-            return selection = this.value;
-          }
-        });
-        globals.xAxis = Number(selection);
-        return _this.start();
-      });
-    };
-
-    BaseVis.prototype.groupFilter = function(dp) {
-      var groups, _ref4;
-      groups = globals.groupSelection.map(function(index) {
-        return data.groups[index];
-      });
-      return _ref4 = (String(dp[data.groupIndex])).toLowerCase(), __indexOf.call(groups, _ref4) >= 0;
-    };
-
-    return BaseVis;
-
-  })();
+  })(BaseVis);
 
 }).call(this);

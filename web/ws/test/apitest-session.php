@@ -1,7 +1,13 @@
 <?php
-$session_key= "500438cc6b240";
-function createSessionTest($exp){
+
+global $success_count;
+global $failure_count;
+
+require_once('apitest-login.php') ;
+
+function createSessionTest($params){
     global $session_key;
+
     //The target for this test
     $target = "localhost/ws/api.php?method=createSession";
    
@@ -11,15 +17,8 @@ function createSessionTest($exp){
     curl_setopt($ch, CURLOPT_HEADER, false);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, array(
-        'session_key' => $session_key,
-        'eid' => $exp,
-        'name' => 'Automated Testing'.time(),
-        'description' => 'Automated Testing Proc'.time(),
-        'street' => '1 university ave',
-        'city' => 'Lowell MA',
-        'country' => 'USA'
-        ));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $params
+    );
        
         //Run curl to get the response
         $result = curl_exec($ch);
@@ -29,33 +28,10 @@ function createSessionTest($exp){
         //echo "<br>".$result."<br>";
         return json_decode($result,true);
 }
-
-/*
-function uploadImageToSessionTest(){   
-    //The target for this test
-    $target = "localhost/ws/api.php?method=uploadImageToSession";
-   
-    //Curl crap that will mostly stay the same
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $target);
-    curl_setopt($ch, CURLOPT_HEADER, false);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, array(
-        '' =>
-        ));
-       
-        //Run curl to get the response
-        $result = curl_exec($ch);
-        //Close curl
-        curl_close($ch);
-        //Parse the response to an associative array
-        //echo "<br>".$result."<br>";
-        return json_decode($result,true);
-}
-*/
 
 function putSessionDataTest($params){   
+    global $session_key;
+
     //The target for this test
     $target = "localhost/ws/api.php?method=putSessionData";
     //Curl crap that will mostly stay the same
@@ -79,15 +55,46 @@ function putSessionDataTest($params){
 //--------------------------------------------------------------------------------------------------------------------
 
 //Create Session Test
+
 echo "<h1>Create Session Test</h1>";
 
-//Session on an open experiment
-echo "<h2>Trying to create a session on an open experiment....</h2>";
 
-$exp = 4;
-$createSession_response = createSessionTest($exp);
+//Session on a closed experiment
+echo "<h2>Trying to create a session(s) on a closed experiment....</h2>";
 
-if ($createSession_response['status'] == 200 ){
+$params = array('session_key' => $session_key, 'eid'=> 2, 'name' => 'Automated Testing Proc'.time(), 'description' => 'Automated Testing Proc'.time(), 'street' => '1 university ave', 'city' => 'Lowell MA', 'country' => 'USA');
+$createSession_response = createSessionTest($params);
+
+
+if ($createSession_response['status'] == 400) {
+    echo "<div class='success'>SUCCESS</div>, Unable to create a session on a closed experiment.<br>";
+    $success_count++;
+} elseif ($createSession_response['status'] == 200) {
+    $session_id = $createSession_response['data']['sessionId'];
+    echo "<div class='failure'>FAILURE</div>, Created a session on a closed experiment. Exp: ";
+    echo "<a href=\"http://localhost/experiment.php?id=" . $exp ."\">" . $exp . "</a>, SessionID: ";
+    echo "<a href=\"http://localhost/newvis.php?sessions=" . $session_id  ."\">" . $session_id . "</a>.  JSON: ";
+    print_r($createSession_response);
+    echo "<br>";
+    $failure_count++;
+} else {
+    echo "<div class='failure'>FAILURE</div>, Something unexpected happened. JSON: ";
+    print_r($login_response);
+    echo "<br>";
+    $failure_count++;
+}
+
+
+/*
+echo "<br>";
+
+//Session on an account which is not logged in
+echo "<h2>Trying to create a session(s) within an account that is not logged in....</h2>";
+
+$params = array('session_key' => $session_key, 'eid'=> 4, 'name' => 'Automated Testing Proc'.time(), 'description' => 'Automated Testing Proc'.time(), 'street' => '1 university ave', 'city' => 'Lowell MA', 'country' => 'USA');
+$createSession_response = createSessionTest($params);
+
+if ($createSession_response['status'] == 400 ){
     $session_id = $createSession_response['data']['sessionId'];
     echo "<div class='success'>SUCCESS</div>, Successfully created a session on an open experiment. ";
     echo "<br>";
@@ -96,29 +103,53 @@ if ($createSession_response['status'] == 200 ){
     print_r($createSession_response);
     echo "<br>";
 }
+*/
 
 echo "<br>";
 
-//Session on a closed experiment
-echo "<h2>Trying to create a session(s) on a closed experiment....</h2>";
+//Session without an experiment id
+echo "<h2>Trying to create a session(s) without an experiment id....</h2>";
 
-$exp = 2;
-$createSession_response = createSessionTest($exp);
+$params = array('session_key' => $session_key, 'eid' => -1, 'name' => 'Automated Testing Proc'.time(), 'description' => 'Automated Testing Proc'.time(), 'street' => '1 university ave', 'city' => 'Lowell MA', 'country' => 'USA');
+$createSession_response = createSessionTest($params);
 
-if ($createSession_response['status'] == 400) {
-    echo "<div class='success'>SUCCESS</div>, Unable to create a session on a closed experiment.<br>";
-} elseif ($createSession_response['status'] == 200) {
+if ($createSession_response['status'] == 400){
     $session_id = $createSession_response['data']['sessionId'];
-    echo "<div class='failure'>FAILURE</div>, Created a session on a closed experiment. Exp: ";
-    echo "<a href=\"http://localhost/experiment.php?id=" . $exp ."\">" . $exp . "</a>, SessionID: ";
-    echo "<a href=\"http://localhost/newvis.php?sessions=" . $session_id  ."\">" . $session_id . "</a>.  JSON: ";
+    echo "<div class='success'>SUCCESS</div>, ";
+    echo $createSession_response['data']['msg'];
+    echo "<br><br>";
+    $success_count++;
+} else {
+    echo "<div class='failure'>FAILURE</div>, ";
+    echo $createSession_response['data']['msg'];
+    print_r($createSession_response);
+    echo "<br><br>";
+    $failure_count++;
+}
+
+//Session on an open experiment
+echo "<h2>Trying to create a session on an open experiment....</h2>";
+
+$params = array('session_key' => $session_key, 'eid'=> 4, 'name' => 'Automated Testing Proc'.time(), 'description' => 'Automated Testing Proc'.time(), 'street' => '1 university ave', 'city' => 'Lowell MA', 'country' => 'USA');
+$createSession_response = createSessionTest($params);
+
+if ($createSession_response['status'] == 200 ){
+    $session_id = $createSession_response['data']['sessionId'];
+    echo "<div class='success'>SUCCESS</div>, Successfully created a session on an open experiment. ";
+    echo "<br>";
+    $success_count++;
+} else {
+    echo "<div class='failure'>FAILURE</div>, Could not create session on open experiment. JSON: ";
     print_r($createSession_response);
     echo "<br>";
-} else {
-    echo "<div class='failure'>FAILURE</div>, Something unexpected happened. JSON: ";
-    print_r($login_response);
-    echo "<br>";
+    $failure_count++;
 }
+
+print_r ($createSession_response);
+
+
+echo "<br>";
+
 
 echo "<hr>";
 
@@ -143,14 +174,25 @@ $params = array('eid'=> 4, 'data' => "[[\"90\", \"40\"]]", 'sid' => $session_id,
 $putSessionData_response = putSessionDataTest($params);
 
 if($putSessionData_response['status'] == 200){
-    echo "<div class='success'>SUCCESS</div>, Put session data successfully.<br>";
-}elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
-}elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
-}elseif($putSessionData_response['status'] == 551){
-    echo "<div class ='failure'>FAILURE</div>";
+    echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $success_count++;
+}elseif($putSessionData_response['status'] == 400){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 550){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 551){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
 }
 
 echo "<br>";
@@ -162,14 +204,25 @@ $params = array('eid'=> 4, 'data' => "[[\"90\", \"40\"]]", 'sid' => $session_id,
 $putSessionData_response = putSessionDataTest($params);
 
 if($putSessionData_response['status'] == 400){
-    echo "<div class='success'>SUCCESS</div>, Invalid session key, not logged in.<br>";
-}elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
-}elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
-}elseif($putSessionData_response['status'] == 551){
-    echo "<div class ='failure'>FAILURE</div>";
+    echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $success_count++;
+}elseif($putSessionData_response['status'] == 200){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 550){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 551){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
 }
 
 echo "<br>";
@@ -182,14 +235,25 @@ $params = array('eid'=> 4, 'data' => $data, 'sid' => $session_id, 'session_key' 
 $putSessionData_response = putSessionDataTest($params);
 
 if($putSessionData_response['status'] == 550){
-    echo "<div class='success'>SUCCESS</div>, Data was malformed.<br>";
-}elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
-}elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
-}elseif($putSessionData_response['status'] == 551){
-    echo "<div class ='failure'>FAILURE</div>";
+    echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $success_count++;
+}elseif($putSessionData_response['status'] == 400){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 200){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
+}elseif($putSessionData_response['status'] == 551){
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    echo "<br>";
+    $failure_count++;
 }
 
 echo "<br>";
@@ -203,12 +267,19 @@ $putSessionData_response = putSessionDataTest($params);
 if($putSessionData_response['status'] == 551){
     echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    $success_count++;
 }elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }
 
 echo "<br><br>";
@@ -222,12 +293,19 @@ $putSessionData_response = putSessionDataTest($params);
 if($putSessionData_response['status'] == 551){
     echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    $success_count++;
 }elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }
 
 echo "<br><br>";
@@ -241,12 +319,19 @@ $putSessionData_response = putSessionDataTest($params);
 if($putSessionData_response['status'] == 551){
     echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    $success_count++;
 }elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }
 
 echo "<br><br>";
@@ -260,12 +345,19 @@ $putSessionData_response = putSessionDataTest($params);
 if($putSessionData_response['status'] == 551){
     echo "<div class='success'>SUCCESS</div>, ";
     echo $putSessionData_response['data']['msg'];
+    $success_count++;
 }elseif($putSessionData_response['status'] == 400){
-    echo "<div class ='failure'>FAILURE</div>, Invalid session key, not logged in.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 200){
-    echo "<div class ='failure'>FAILURE</div>, Put session data successfully.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }elseif($putSessionData_response['status'] == 550){
-    echo "<div class ='failure'>FAILURE</div>, Data was malformed.<br>";
+    echo "<div class ='failure'>FAILURE</div>, ";
+    echo $putSessionData_response['data']['msg'];
+    $failure_count++;
 }
 
 echo "<br>";

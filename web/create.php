@@ -33,40 +33,69 @@ $types = getTypes();
 $errors = array();
 $created = false;
 $values = array();
+//Defaults
+$values['interval'] = 1000;
+
+
 $eid = -1;
 $reqs = array();
 
 $reqs[] = 
 
 $smarty->assign('created', false);
-
 if(isset($_POST['experiment_create'])) {
 	
 	$name = "";
-	if(isset($_POST['experiment_name'])) { $name = safeString($_POST['experiment_name']); }
-	if($name == "") { array_push($errors, 'Experiment name can not be blank.'); }
-	$values['name'] = $name;
+	if(isset($_POST['experiment_name'])) { 
+            $name = safeString($_POST['experiment_name']); 
+            if($name == "") { 
+                array_push($errors, 'Experiment name can not be blank.'); 
+            } else {
+                $values['name'] = $name;
+            }
+        }
+	
 	
 	$desc = "";
 	if(isset($_POST['experiment_description'])) { $desc = safeString($_POST['experiment_description']); }
 	if($desc == "") { array_push($errors, 'Experiment description can not be blank.'); }
 	$values['description'] = $desc;
-	
-	$fields = array();
-	if(isset($_POST['fields'])) { $fields = safeString($_POST['fields']); }
-        if($fields == null) { array_push($errors, 'Experiment fields can not be blank.'); }
-        $fields['fields'] = $fields;
-	
+
+	//Validate fields are selected
+	if(isset($_POST['number_of_fields'])) { $fields = safeString($_POST['number_of_fields']); }
+        if($fields < 1 ) { array_push($errors, 'Experiment fields can not be blank.'); }
 	
 	if(isset($_POST['req_procedure'])) { $req_procedure=$_POST['req_procedure']; }
 	if(isset($_POST['req_location'])) { $req_location=$_POST['req_location']; }
 	if(isset($_POST['name_prefix'])) { $name_prefix=$_POST['name_prefix']; }
-    if(isset($_POST['req_name'])) { $req_name=safeString($_POST['req_name']); }
+        if(isset($_POST['req_name'])) { $req_name=safeString($_POST['req_name']); }
 	if(isset($_POST['location'])) { $location=safeString($_POST['location']); }
-
+        
+        if(isset($_POST['req_sample_interval'])) {
+            
+            $req_sample_interval =safeString($_POST['req_sample_interval']);
+            if($req_sample_interval == 1){
+                if(isset($_POST['interval'])) {
+                    $interval = intval(safeString($_POST['interval']));
+                    $values['interval'] = $interval;
+                }
+                if ($interval == null){
+                    array_push($errors, 'No recommended sample interval set.');
+                }
+                else if ($interval <= 0) {
+                    array_push($errors, 'Sample interval must be positive.');
+                }
+            } else {
+                $interval = -1;
+                $values['interval'] = $interval;
+            }
+            $values['req_sample_interval'] = $req_sample_interval;
+        }
+        
 	
 	if(count($errors) == 0) {
-		if($exp = createExperiment($session->generateSessionToken(), $name, $desc, "", $req_name, $req_procedure, $req_location, $name_prefix, $location)) {
+                
+		if($exp = createExperiment($session->generateSessionToken(), $name, $desc, "", $req_name, $req_procedure, $req_location, $name_prefix, $location, $interval)) {
 
 			$tag_list = array();
 

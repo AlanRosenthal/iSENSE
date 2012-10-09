@@ -41,7 +41,7 @@
 		    		<p>Please describe the basics of your experiment, and the experimental procedure, and its keywords.</p>
 		    		
 		    		<label for="experiment_name">* Name:</label>
-		    		    <input type="text" name="experiment_name" id="experiment_name" class="required urlSafe" />
+		    		    <input type="text" name="experiment_name" id="experiment_name" class="required urlSafe" value="{$values.name}" />
 		    		    <img id="experiment_name_validated" src="/html/img/validated.png" class="validated vfloat" />
 		    		    <img id="experiment_name_failed" class="failed vfloat" src="/html/img/failed.png" /><br/>
 		    		    <span class="hint">Example: "Salinity Levels in Rivers"</span><br/>
@@ -106,11 +106,20 @@
                                     <span style="float:none;left:5%" id="loc_hint" class="hint">i.e., All sessions will have the same location</span><br />
 
                            </div>
-                                
+                           <div>
+                                <div style="float:left;width:50%">Is there a recommended sample interval?</div>
+                                    <div><select name="req_sample_interval" id="req_sample_interval">
+                                        <option value="0">No</option>
+                                        <option value="1" {if $values.req_sample_interval == 1} selected {/if}>Yes</option>
+                                    </select><br /><br /></div>
+                                    
+                                <div id="sample_interval_option" {if not $values.req_sample_interval == 1} style="display:none;{/if}">
+                                    <span id="sinterval_label">&nbsp;&nbsp;<b>Sample interval:</b></span>
+                                    <input type="number" name="interval" id="sinterval_input" value="{$values.interval}" min="1" style="width:15%;text-align:right;" /> ms<br />
+                                    <span style="float:none;left:5%" id="sinterval_hint" class="hint">i.e., 1000 milliseconds is 1 second</span><br />
+                                </div>
+                           </div>
                         </div>
-                     
-					
-					
 				</fieldset>
 				
 				<fieldset id="fields">

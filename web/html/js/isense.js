@@ -28,8 +28,8 @@ $(document).ready(function(){
             }
         });
     }
-
-
+    
+    
     
     if($('img.selectexpimage').length > 0){
         $('img.selectexpimage').click(function(){
@@ -248,15 +248,25 @@ $(document).ready(function(){
     
     if($('#file_upload').length > 0) {
         $('#file_upload').click(function(){
-            $('#type_file').toggle();
-            $('#type_manual').toggle();
+            $('#type_file').show();
+            $('#type_manual').hide();
+            $('#type_google').hide();
         });
     }
     
     if($('#manual_upload').length > 0) {
         $('#manual_upload').click(function(){
-            $('#type_file').toggle();
-            $('#type_manual').toggle();
+            $('#type_file').hide();
+            $('#type_manual').show();
+            $('#type_google').hide();
+        });
+    }
+    
+    if($('#google_upload').length > 0) {
+        $('#google_upload').click(function(){
+            $('#type_file').hide();
+            $('#type_manual').hide();
+            $('#type_google').show();
         });
     }
     
@@ -265,7 +275,32 @@ $(document).ready(function(){
     }
     
 
-		$('div.rating_canel').css('display', 'none');
+	$('div.rating_canel').css('display', 'none');
+	
+	$('#defult_vis_selector').change(function(){
+	    
+	    /*
+	    
+	    function stop_following(follower, followee) {
+
+            $.ajax({
+                url:'/actions/graph.php',
+                data:'action=unfollow&follower='+follower+'&followee='+followee
+            })
+
+        }
+	    
+	    */
+	    
+	    //alert($(this).val());
+	    
+	    $.ajax({
+            url:'/actions/experiments.php',
+            data:'action=setDefaultVis&eid='+eid+'&vis_type='+$(this).val()
+        });
+	    
+	});
+	
 });
 
 function createActivity(exp_id) {
@@ -287,11 +322,30 @@ function loadExport(exp_id) {
     $(document).find('input[name=sessions]:checked').each(function(i){ sessionList.push($(this).val()); });
     
     if(sessionList.length == 0) {
-        alert("You did not select any sessions to visualize. Please select at least 1 session then click 'Visualize'");
+        alert("You did not select any sessions to Export. Please select at least 1 session then click 'Export'");
     }
     else {
         var url = 'http://' + window.location.host + '/actions/package.php?eid=' + exp_id + '&sessions=' + sessionList.join(',');
         window.open(url, 'Download');
+    }
+}
+
+function loadVis0(exp_id, is_activity) {
+     var sessionList = Array();
+    
+    $(document).find('input[name=sessions]:checked').each(function(i){ sessionList.push($(this).val()); });
+    
+    if(sessionList.length == 0) {
+        alert("You did not select any sessions to visualize. Please select at least 1 session then click 'Visualize'");
+    }
+    else {
+        var url = 'vis.php?sessions='+sessionList.join('+');
+        
+        if(is_activity == true) {
+            url = url + '&aid='+exp_id;
+        }
+        
+        window.location.href = url;
     }
 }
 
@@ -304,7 +358,7 @@ function loadVis(exp_id, is_activity) {
         alert("You did not select any sessions to visualize. Please select at least 1 session then click 'Visualize'");
     }
     else {
-        var url = 'vis.php?sessions='+sessionList.join('+');
+        var url = 'newvis.php?sessions='+sessionList.join('+');
         
         if(is_activity == true) {
             url = url + '&aid='+exp_id;
@@ -323,7 +377,7 @@ function loadVis2(exp_id, is_activity) {
         alert("You did not select any sessions to visualize. Please select at least 1 session then click 'Visualize'");
     }
     else {
-        var url = 'newvis.php?sessions='+sessionList.join('+');
+        var url = 'highvis.php?sessions='+sessionList.join('+');
         
         if(is_activity == true) {
             url = url + '&aid='+exp_id;
@@ -689,7 +743,7 @@ var createWizard = {
     },
     
     clear_field:function() {
-      createWizard.fields = new Array();  
+      createWizard.fields = new Array(); 
     },
     
     next_step:function() {
@@ -707,17 +761,42 @@ var createWizard = {
     step_start:function(pinpoint) {
         createWizard._started = true;
         $('#step_start').hide();
+        
+        /*
         if(pinpoint) {
             createWizard.step_pinpoint();
         }
         else {
             createWizard.step_custom();
+        }*/
+        
+        
+        switch($('input:radio[name=fieldSelect]:checked').val()){
+            
+            case 'custom':
+            
+            createWizard.step_custom();
+            
+            break;
+            case 'pinpoint':
+            
+            createWizard.step_pinpoint();
+            
+            break;
+            case 'upinpoint':
+            
+            createWizard.step_upinpoint();
+            
+            break;
+            
         }
+        
         $('#wizard_options').show();
     },
     
     step_restart:function() {
         createWizard._started = false;
+        $('#step_upinpoint').hide();
         $('#step_pinpoint').hide();
         $('#step_custom').hide();
         $('#wizard_options').hide();
@@ -729,7 +808,72 @@ var createWizard = {
         createWizard.prev = createWizard.step_restart;
         $('#step_pinpoint').show();
     },
+    
+    step_upinpoint:function() {
+        createWizard.next = createWizard.step_upinpoint_advance;
+        createWizard.prev = createWizard.step_restart;
+        $('#step_upinpoint').show();
+    },
+    
+    step_upinpoint_advance:function() {
+        
+        $('#error_msg_custom').children().remove();
+        
+        var errors		= false;
+		var errormessage = "";
+		
+		var sensortypes = [
+			
+			{name: 'Time', pagename: 'Time', type_id: 7, unit_id: 22},
+			{name: 'ElapsedTime', pagename: 'ElapsedTime', type_id: 21, unit_id: 66},
+			{name: 'Temperature', pagename: 'Temperature', type_id: 1, unit_id: 2},
+			{name: 'Pressure', pagename: 'Pressure', type_id: 27, unit_id: 75},
+			{name: 'Altitude', pagename: 'Altitude', type_id: 3, unit_id: 5},
+			{name: 'AccelX', pagename: 'AccelX', type_id: 25, unit_id: 71},
+			{name: 'AccelY', pagename: 'AccelY', type_id: 25, unit_id: 71},
+			{name: 'AccelZ', pagename: 'AccelZ', type_id: 25, unit_id: 71},
+			{name: 'AccelMag', pagename: 'AccelMag', type_id: 25, unit_id: 71},
+			{name: 'Light', pagename: 'Light', type_id: 9, unit_id: 31}
+			
+		];
+		
+		if(!errors){
+		
+    		for(i=0;i<sensortypes.length;i++){
+		    
+    		    if($('#' + sensortypes[i].pagename).attr('checked')){
+    		        
+    		        createWizard.store_field(sensortypes[i].name, sensortypes[i].type_id, sensortypes[i].unit_id);
+    		        
+		        } else {
+		            
+		        }
+		    
+    		}
+		
+		    if(!errors){
+		
+				createWizard.next = createWizard.step_post_process;
 
+	            $('#step_pinpoint').hide();
+	            $('#step_upinpoint').hide();
+	            $('#step_done').show();
+	            $('#create_advance').val('Done');
+	            $('#create_previous').hide();
+				$('div#wizard_error').hide();
+			
+			}
+			
+		} else {
+			
+			$('div#wizard_error').html(errormessage);
+
+			$('div#wizard_error').show();
+			
+		}
+        
+    },
+    
     step_pinpoint_advance:function() {
 	
 			/*

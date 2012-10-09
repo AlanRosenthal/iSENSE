@@ -1,10 +1,16 @@
 <div id="hiddenModalContent" style="display:none;">
 	<div id="wizard_wrapper" style="width:600px;">
 		<div id="step_start" class="wizard_step">
+		    
 			<strong>Will you use the iSENSE PinPoint Board?</strong>
 			<div class="wizard_step_content">
-				<input type="submit" value="Yes" onclick="createWizard.step_start(true);" /> <input type="submit" value="No" onclick="createWizard.step_start(false);" />
+			    <br>
+				<input type="radio" name="fieldSelect" value="custom" checked> Set up fields manually.</input><br>
+				<input type="radio" name="fieldSelect" value="pinpoint"> Set up fields for Pinpoint.</input><br>
+				<input type="radio" name="fieldSelect" value="upinpoint"> Set up fields for uPinpoint.</input><br><br>
+				<button onclick="createWizard.step_start();">Next</button>
 			</div>
+			
 		</div>
 		<div id="step_pinpoint" class="wizard_step" style="display:none;">
 			<strong>Select the PinPoint sensors you will use.</strong>
@@ -212,6 +218,77 @@
 			</table>
 			</div>
 		</div>
+		
+		<!--  -->
+		
+		<div id="step_upinpoint" class="wizard_step" style="display:none;">
+			<strong>Select the PinPoint sensors you will use.</strong>
+			<div class="wizard_step_content">
+				<table width="100%">
+				<tr id="error" style="display:none;">
+					<td id="error_msg" colspan="3"></td>
+				</tr>
+				<tr>
+					<th align="left">&nbsp;</th>
+					<th colspan="2" align="left" width="169px">Sensor</th>
+				</tr>
+				<tr>
+					<td><input id="Time" name="Time" type="checkbox" /></td>
+					<td colspan="2">Time</td>
+				</tr>
+				<tr>
+					<td><input id="ElapsedTime" name="ElapsedTime" type="checkbox" /></td>
+					<td colspan="2">Elapsed Time</td>
+				</tr>
+				<tr>
+					<td><input id="Temperature" name="Temperature" type="checkbox" /></td>
+					<td colspan="2">Air Temperature</td>
+				</tr>
+				<tr>
+					<td><input id="Pressure" name="Pressure" type="checkbox" /></td>
+					<td colspan="2">Pressure</td>
+				</tr>
+				<tr>
+					<td><input id="Altitude" name="Altitude" type="checkbox" /></td>
+					<td colspan="2">Altitude</td>
+				</tr>
+				<tr>
+					<td><input id="AccelX" name="AccelX" type="checkbox" /></td>
+					<td colspan="2">Acceleration: X</td>
+				</tr>
+				<tr>
+					<td><input id="AccelY" name="AccelY" type="checkbox" /></td>
+					<td colspan="2">Acceleration: Y</td>
+				</tr>
+				<tr>
+					<td><input id="AccelZ" name="AccelZ" type="checkbox" /></td>
+					<td colspan="2">Acceleration: Z</td>
+				</tr>
+				<tr>
+					<td><input id="AccelMag" name="AccelMag" type="checkbox" /></td>
+					<td colspan="2">Acceleration: Magnitude</td>
+				</tr>
+				<tr>
+					<td><input id="Light" name="Light" type="checkbox" /></td>
+					<td colspan="2">Light</td>
+				</tr>
+				
+				<!--
+				<tr id="external_label_wrapper" style="display:none;">
+					<td>&nbsp;</td>
+					<td>External Label:</td>
+					<td>
+						<input id="external_label" name="external_label" type="text" disabled />
+					</td>
+				</tr>
+				-->
+
+			</table>
+			</div>
+		</div>
+		
+		<!--  -->
+		
 		<div id="step_custom" class="wizard_step" style="display:none;">
 			<strong>Add the fields you will measure.</strong>
 			<div class="wizard_step_content">

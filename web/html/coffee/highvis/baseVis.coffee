@@ -28,12 +28,217 @@
 ###
 
 window.globals ?= {}
-globals.groupSelection ?= for keys of data.groups
-    Number keys
-globals.fieldSelection ?= data.normalFields[0..0]
-globals.xAxis ?= data.numericFields[0]
+
+globals.logY ?= 0
+
+#Only init selections if this is not a saved vis
+if not data.savedGlobals?
+    globals.groupSelection ?= for vals, keys in data.groups
+        Number keys
+    globals.fieldSelection ?= data.normalFields[0..0]
 
 class window.BaseVis
+    constructor: (@canvas) ->
+
+    ###
+    Start sequence used by runtime
+    ###
+    start: ->
+        @drawControls()
+        @update()
+        
+    ###
+    Update minor state
+        Redraws html controls
+
+        Derrived classes should overload to reload content.
+    ###
+    update: ->
+
+    ###
+    Default delayed update simply updates
+    ###
+    delayedUpdate: ->
+        @update()
+
+    ###
+    Method called when vis resize has begun
+        Defaults to doing nothing.
+    ###
+    resize: (newWidth, newHeight) ->
+    
+    ###
+    End sequence used by runtime
+        This is called when the user switches away from this vis.
+        Should destroy the chart, hide its canvas and remove controls.
+    ###
+    end: ->
+        console.log console.trace()
+        alert   """
+                BAD IMPLEMENTATION ALERT!
+
+                Called: 'BaseVis.end'
+
+                See logged stack trace in console.
+                """
+        
+    ###
+    Draws controls
+        Derived classes should write control HTML and bind handlers using the method such as drawGroupControls.
+    ###
+    drawControls: ->
+        @clearControls()
+
+    ###
+    Clear the controls
+        Unbinds control handlers and clears the HTML elements.
+    ###
+    clearControls: ->
+        ($ '#controldiv').empty()
+
+    ###
+    Draws group selection controls
+        This includes a series of checkboxes and a selector for the grouping field.
+        The checkbox text color should correspond to the graph color.
+    ###
+    drawGroupControls: (startOnGroup = false) ->
+
+        controls = '<div id="groupControl" class="vis_controls">'
+
+        controls += "<h3 class='clean_shrink'><a href='#'>Groups:</a></h3>"
+
+        controls += "<div class='outer_control_div'>"
+
+        # Add grouping selector
+        controls += '<div class="inner_control_div"> Group By: '
+        controls += '<select id="groupSelector" class="control_select">'
+
+        for fieldIndex in data.textFields
+            sel = if fieldIndex is data.groupingFieldIndex then 'selected' else ''
+            controls += "<option value='#{Number fieldIndex}' #{sel}>#{data.fields[fieldIndex].fieldName}</option>"
+
+        controls += "</select></div>"
+
+        # Populate choices
+        counter = 0
+        for group, gIndex in data.groups
+            controls += "<div class='inner_control_div' style=\"color:#{globals.colors[counter % globals.colors.length]};\">"
+
+            controls += "<input class='group_input' type='checkbox' value='#{gIndex}' #{if (Number gIndex) in globals.groupSelection then "checked" else ""}/>&nbsp"
+            controls += "#{group}"
+            controls += "</div>"
+            counter += 1
+        controls += '</div></div>'
+
+        # Write HTML
+        ($ '#controldiv').append controls
+
+        # Make group select handler
+        ($ '#groupSelector').change (e) =>
+            element = e.target or e.srcElement
+            data.setGroupIndex (Number element.value)
+            globals.groupSelection = for vals, keys in data.groups
+                Number keys
+            @delayedUpdate()
+            @drawControls()
+
+        # Make group checkbox handler
+        ($ '.group_input').click (e) =>
+            selection = []
+            ($ '.group_input').each ()->
+                if @checked
+                    selection.push Number @value
+                else
+            globals.groupSelection = selection
+            
+            if startOnGroup
+                @start()
+            else
+                @delayedUpdate()
+
+        #Set up accordion
+        globals.groupOpen ?= 0
+            
+        ($ '#groupControl').accordion
+            collapsible:true
+            active:globals.groupOpen
+
+        ($ '#groupControl > h3').click ->
+            globals.groupOpen = (globals.groupOpen + 1) % 2
+
+    ###
+    Draws vis saving controls
+    ###
+    drawSaveControls: (e) ->
+
+        controls = '<div id="saveControl" class="vis_controls">'
+
+        controls += "<h3 class='clean_shrink'><a href='#'>Saving:</a></h3>"
+        controls += "<div class='outer_control_div' style='text-align:center'>"
+
+        controls += "<div class='inner_control_div'>"
+        controls += "<button id='saveVisButton' class='save_button'>Save Visualization </button>"
+        controls += "</div>"
+
+        if @chart?
+            controls += "<div class='inner_control_div'>"
+            controls += "<button id='downloadVisButton' class='save_button'> Download Visualization </button>"
+            controls += "</div>"
+
+            controls += "<div class='inner_control_div'>"
+            controls += "<button id='printVisButton' class='save_button'> Print Visualization </button>"
+            controls += "</div>"
+
+        controls += '</div></div>'
+
+        # Write HTML
+        ($ '#controldiv').append controls
+
+        ($ "#saveControl button").button()
+        
+        ($ "#saveVisButton").click ->
+            globals.verifyUser (-> globals.savedVisDialog()), (-> alert 'You must be logged in to save a visualization.')
+
+        ($ '#downloadVisButton').click =>
+            @chart.exportChart
+                type: "image/svg+xml"
+
+        ($ '#printVisButton').click =>
+            @chart.print()
+        
+        #Set up accordion
+        globals.saveOpen ?= 0
+
+        ($ '#saveControl').accordion
+            collapsible:true
+            active:globals.saveOpen
+
+        ($ '#saveControl > h3').click ->
+            globals.saveOpen = (globals.saveOpen + 1) % 2
+            
+    ###
+    Hides the control div and remembers its previous size.
+    ###
+    hideControls: ->
+        @controlWidth = ($ '#controldiv').width()
+        ($ '#controldiv').width 0
+        ($ '#controlhider').hide()
+        ($ '#' + @canvas).css
+            width: ($ "#viscontainer").innerWidth() - (($ "#controlhider").outerWidth() + globals.VIS_MARGIN)
+
+    ###
+    Returns the control div with its previous size intact.
+    ###
+    unhideControls: ->
+        ($ '#controldiv').width @controlWidth
+        ($ '#controlhider').show()
+
+    ###
+    Do any nessisary cleanup work before serialization.
+    ###
+    serializationCleanup: ->
+
+class window.BaseHighVis extends BaseVis
     ###
     Constructor
         Assigns target canvas name
@@ -46,31 +251,43 @@ class window.BaseVis
         Subsequent derrived classes should use $.extend to expand upon these agter calling super()
     ###
     buildOptions: ->
+
+        self = this
+    
         @chartOptions = 
             chart:
                 renderTo: @canvas
-                animation: false
+                reflow: false
             #colors:
             credits:
                 enabled: false
-            #global: {}
-            #labels: {}
-            #legend: {}
+            exporting:
+                buttons:
+                    exportButton:
+                        enabled:false
+                    printButton:
+                        enabled:false
+            legend:
+                symbolWidth:60
+                itemWidth: 200
             #loading: {}
             plotOptions:
                 series:
+                    turboThreshold: Number.MAX_VALUE
                     marker:
                         lineWidth:1
                         radius:5
                     events:
-                        legendItemClick: (event) =>
-                            index = data.normalFields[event.target.index]
+                        legendItemClick: do => (event) ->
+                            
+                            index = this.options.legendIndex
 
-                            if event.target.visible
+                            if index in globals.fieldSelection
                                 arrayRemove(globals.fieldSelection, index)
                             else
                                 globals.fieldSelection.push(index)
-                            @update()
+
+                            self.delayedUpdate()
             #point: {}
             series: []
             #subtitle: {}
@@ -78,43 +295,94 @@ class window.BaseVis
             title: {}
             #tooltop: {}
             #xAxis: {}
-            #yAxis: {}
-            #exporting: {}
-            #navigation: {}
+            yAxis:
+                minorTickInterval: 'auto'
+                title:
+                    text: if globals.fieldSelection.length isnt 1
+                        'Y-Values'
+                    else
+                        data.fields[globals.fieldSelection[0]].fieldName
+                    
 
-        count = -1
-        @chartOptions.series = for field in data.fields when (Number field.typeID) not in [37, 7]
-            count += 1
-            dummy =
-                data: []
-                color: '#000'
-                marker:
-                    symbol: globals.symbols[count % globals.symbols.length]
-                name: field.fieldName
+        @chartOptions.xAxis = []
+        @chartOptions.xAxis.push {}
+        @chartOptions.xAxis.push
+            lineWidth: 0
+            categories: ['']
 
+    ###
+    Builds the 'fake series' for legend controls.
+        Derrived objects should implement this.
+    ###
+    buildLegendSeries: ->
+        console.log console.trace()
+        alert   """
+                BAD IMPLEMENTATION ALERT!
+
+                Called: 'BaseVis.buildLegendSeries'
+
+                See logged stack trace in console.
+                """
     ###
     Start sequence used by runtime
         This is called when the user switched to this vis.
         Should re-build options and the chart itself to ensure sync with global settings.
         This method should also be usable as a 'full update' in that it should destroy the current chart if it exists before generating a fresh one.
+
+        TODO: Update comment
     ###
     start: ->
         @buildOptions()
         
-        if @chart?
-            @chart.destroy()
         @chart = new Highcharts.Chart @chartOptions
-
-        #Sync hidden state from globals
-        for ser in @chart.series[0...data.normalFields.length]
-            index = data.normalFields[ser.index]
-            if index in globals.fieldSelection
-                ser.show()
-            else
-                ser.hide()
     
         ($ '#' + @canvas).show()
-        @update()
+        
+        super()
+
+    ###
+    Update minor state
+        Clears current series and re-loads the legend.
+
+        Derrived classes should overload to add data drawing.
+    ###
+    update: ->
+        #Name Y Axis
+        title = if globals.fieldSelection.length isnt 1
+            temp =
+                text: 'Y-Values'
+        else
+            temp =
+                text: data.fields[globals.fieldSelection[0]].fieldName
+        @chart.yAxis[0].setTitle title, false
+    
+        #Remove curent data
+        while @chart.series.length isnt 0
+            @chart.series[0].remove(false)
+
+        #Draw legend
+        for options in @buildLegendSeries()
+           @chart.addSeries options, false
+        
+    ###
+    Performs an update while displaying the loading text
+    ###
+    delayedUpdate: ->
+        @chart.showLoading 'Loading...'
+
+        #Save context
+        mySelf = this
+        update = -> mySelf.update()
+        setTimeout update, 1
+
+        @chart.hideLoading()
+
+    ###
+    Method called when vis resize has begun
+        Resize highcharts to match
+    ###
+    resize: (newWidth, newHeight, duration) ->
+        @chart.setSize(newWidth, newHeight, {duration: duration, easing:'linear'})
         
     ###
     End sequence used by runtime
@@ -122,142 +390,18 @@ class window.BaseVis
         Should destroy the chart, hide its canvas and remove controls.
     ###
     end: ->
-        @chart.destroy()
-        @clearControls()
+        if @chart?
+            @chart.destroy()
+            @chart = undefined;
+            
         ($ '#' + @canvas).hide()
 
     ###
-    Update minor state
-        Should update the hidden status based on both high-charts legend action and control checkboxes.
+    Remove the chart and chart options object
     ###
-    update: ->
-        @clearControls()
-        @drawControls()
+    serializationCleanup: ->
+        delete @chart
+        delete @chartOptions
 
-        #Update hidden state
-        for index in [0...@chart.series.length - data.normalFields.length]
-            fieldIndex = data.normalFields[index % data.normalFields.length]
-            groupIndex = Math.floor (index / data.normalFields.length)
+
             
-            if (groupIndex in globals.groupSelection) and (fieldIndex in globals.fieldSelection)
-                @chart.series[index + data.normalFields.length].setVisible(true, false)
-            else
-                @chart.series[index + data.normalFields.length].setVisible(false, false)
-            @chart.redraw()
-                
-
-    ###
-    Clear the controls
-        Unbinds control handlers and clears the HTML elements.
-    ###
-    clearControls: ->
-        #($ '#controldiv').find('*').unbind()
-        ($ '#controldiv').html('')
-
-    ###
-    Draws controls
-        Derived classes should write control HTML and bind handlers using the methods defined below.
-    ###
-    drawControls: ->
-        console.log console.trace()
-        alert   """
-                BAD IMPLEMENTATION ALERT!
-
-                Called: 'BaseVis.drawControls'
-
-                See logged stack trace in console.
-                """
-
-                
-    ###
-    Draws group selection controls
-        This includes a series of checkboxes and a selector for the grouping field.
-        The checkbox text color should correspond to the graph color.
-    ###
-    drawGroupControls: ->
-        controls = '<div id="groupControl" class="vis_controls">'
-        
-        controls += '<table class="vis_control_table"><tr><td class="vis_control_table_title">Groups:</tr></td>'
-        
-        # Add grouping selector
-        controls += '<tr><td><div class="vis_control_table_div">'
-        controls += '<select class="group_selector">'
-        
-        for fieldIndex in data.textFields
-            controls += "<option value=\"#{Number fieldIndex}\">#{data.fields[fieldIndex].fieldName}</option>"
-        
-        controls += "</select></div></td></tr>"
-        
-        # Populate choices
-        counter = 0
-        for gIndex, group of data.groups
-            controls += '<tr><td>'
-            controls += "<div class=\"vis_control_table_div\" style=\"color:#{globals.colors[counter]};\">"
-            
-            controls += "<input class='group_input' type='checkbox' value='#{gIndex}' #{if (Number gIndex) in globals.groupSelection then "checked" else ""}/>&nbsp"
-            controls += "#{group}&nbsp"
-            controls += "</div></td></tr>"
-            counter += 1
-        controls += '</table></div>'
-        
-        # Write HTML
-        ($ '#controldiv').append controls
-        
-        # Make group select handler
-        ($ '.group_selector').change (e) =>
-            element = e.target or e.srcElement
-            data.setGroupIndex (Number element.value)
-            globals.groupSelection ?= for keys of data.groups
-                Number keys
-            @start()
-        
-        # Make group checkbox handler
-        ($ '.group_input').click (e) =>
-            selection = []
-            ($ '.group_input').each ()->
-                if @checked
-                    console.log 'checked'
-                    selection.push Number @value
-                else
-                    console.log 'unchecked'
-            globals.groupSelection = selection
-            @update()
-            
-
-    ###
-    Draws x axis selection controls
-        This includes a series of radio buttons.
-    ###
-    drawXAxisControls: ->
-        controls = '<div id="xAxisControl" class="vis_controls">'
-        
-        controls += '<table class="vis_control_table"><tr><td class="vis_control_table_title">X Axis:</tr></td>'
-        
-        # Populate choices (not text)
-        for field of data.fields
-            if (Number data.fields[field].typeID) != 37
-                controls += '<tr><td>'
-                controls += '<div class="vis_control_table_div">'
-                
-                controls += "<input class=\"xAxis_input\" type=\"radio\" name=\"xaxis\" value=\"#{field}\" #{if (Number field) == globals.xAxis then "checked" else ""}></input>&nbsp"
-                controls += "#{data.fields[field].fieldName}&nbsp"
-                controls += "</div></td></tr>"
-        
-        controls += '</table></div>'
-        
-        # Write HTML
-        ($ '#controldiv').append controls
-            
-        # Make xAxis radio handler
-        ($ '.xAxis_input').click (e) =>
-            selection = null
-            ($ '.xAxis_input').each ()->
-                if @checked
-                    selection = @value
-            globals.xAxis = Number selection
-            @start()
-
-    groupFilter: (dp) ->
-        groups = globals.groupSelection.map (index) -> data.groups[index]
-        (String dp[data.groupIndex]).toLowerCase() in groups
-        

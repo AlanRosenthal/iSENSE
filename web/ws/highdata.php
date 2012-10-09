@@ -35,12 +35,18 @@ class Data {
 
     public $experimentID;
     public $experimentName;
+    public $allVis       = array('Map','Timeline','Scatter','Bar','Histogram','Table','Motion','Photos');
     
-    public $relVis      = array(/*'Table'*/);
+    public $relVis       = array();
     
-    public $fields      = array();
-    public $dataPoints  = array();
-    public $metaData    = array();
+    public $fields       = array();
+    public $dataPoints   = array();
+    public $metaData     = array();
+    public $normalFields = array();
+    public $timeFields   = array();
+    public $geoFields = false;
+    public $hasPics = false;
+    public $defaultVis = null;
   
     /* Turn on the relevant vizes */
     public function setRelVis() {
@@ -48,20 +54,34 @@ class Data {
         /* See how much data the experiment has */
         $total = count($this->dataPoints);
         
-        /* If there is more than one data point in a session add the following vizes */
-        if( $total > 1 ) {
-            $this->relVis = array_merge(array('Scatter', 'Bar', 'Histogram'), $this->relVis); 
-
-            /* if a time field exists, add timeline */
-            foreach( $this->fields as $field ){
-                if ($field->type_id == 7) {
-                    $this->relVis = array_merge(array('Timeline'), $this->relVis); 
-                }
+        if ($total > 1) {       
+            
+            if((count($this->normalFields))>1){
+                $this->relVis = array_merge(array('Scatter'), $this->relVis);     
             }
+            if((count($this->timeFields))>0 && (count($this->normalFields))>0){
+                $this->relVis = array_merge(array('Timeline'), $this->relVis);           
+            }
+            if((count($this->normalFields))>0){
+                $this->relVis = array_merge(array('Bar','Histogram'), $this->relVis);     
+            }
+            
         }
-
-        /* Add the map last because it should always be first. */
-        //$this->relVis = array_merge(array('Map'), $this->relVis);   
+        
+        $this->relVis = array_merge(array('Table'), $this->relVis);
+        
+        if($this->geoFields){
+            $this->relVis = array_merge(array('Map'), $this->relVis);
+        }
+        
+        if ($total > 1 && (count($this->timeFields))>0 && (count($this->normalFields))>0){
+            
+            $this->relVis = array_merge(array('Motion'), $this->relVis);
+            
+        }
+        
+        $this->relVis = array_reverse($this->relVis);
+        
     }  
     
 };
@@ -88,6 +108,14 @@ class DataField {
     
 };
 
+if(isset($_REQUEST['vid'])) {
+
+     $vis = getSavedVis($_REQUEST['vid']);
+     
+     echo "var data = {savedData: '{$vis[0]['data']}', savedGlobals: '{$vis[0]['globals']}'};";
+
+}
+
 if(isset($_REQUEST['sessions'])) {
 
     //Create Data object
@@ -98,7 +126,7 @@ if(isset($_REQUEST['sessions'])) {
     
     $data->experimentID     = getSessionExperimentId($sessions[0]);
     $data->experimentName   = getNameFromEid($data->experimentID);
-
+    $data->defaultVis      = getDefaultVisForExperiment($data->experimentID);
     //Load fields into Data object
     $fields = getFields($data->experimentID);
     
@@ -110,7 +138,7 @@ if(isset($_REQUEST['sessions'])) {
 
     }
     
-    array_unshift($data->fields, new DataField(-1, "Session ID-Name", 37, 81, "Text", "Text", ""));
+    array_unshift($data->fields, new DataField(-1, "Session Name(ID)", 37, 81, "Text", "Text", ""));
     
     $newdata = array();
 
@@ -120,7 +148,7 @@ if(isset($_REQUEST['sessions'])) {
     foreach( $sessions as $index=>$ses ) {
 
         //Make Session ID-Name value
-        $idName = "" . $ses . "-" . $sessionNames[$ses] . "";
+        $idName = "" . $sessionNames[$ses] . "(" . $ses . ")";
         
         //Add Session ID-Name field to data
         $tmpData = getData($data->experimentID, $ses);
@@ -145,10 +173,33 @@ if(isset($_REQUEST['sessions'])) {
         
         //add the data
         $data->dataPoints = array_merge($data->dataPoints, $tmpData);
+        
+        //Figure out the field types for the experiment.
+        foreach($fields as $key=>$field){
+            $t = $field['type_id'];
             
+            //add timeFields
+            if ($t == 7) {
+                $data->timeFields = array_merge($data->timeFields,array($key));               
+            }
+            
+            //add normalFields
+            if ($t!=7 && $t!=19 && $t!=37){
+                $data->normalFields = array_merge($data->normalFields,array($key));
+            }
+            
+            if($t == 19){
+                $data->geoFields = true;
+            }
+        }
+        
         //Get session related meta data
         $data->metaData[$idName] = getSession($ses);
         $data->metaData[$idName]['pictures'] = getSessionPictures($ses);
+
+        if(count($data->metaData[$idName]['pictures'])>0){
+            $data->hasPics = true;
+        }
     }
     
     //Determine witch vises are relevant

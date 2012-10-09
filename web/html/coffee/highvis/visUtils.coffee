@@ -40,6 +40,58 @@ window.arrayRemove = (arr, item) ->
     arr
 
 ###
+Tests to see if a and b are within thresh%
+of the smaller value.
+###
+window.fpEq = (a, b, thresh = 0.0001) ->
+    diff = Math.abs (a - b)
+    e = (Math.abs (Math.min a, b)) * thresh
+
+    return diff < e
+
+###
+Date formatter
+###
+globals.dateFormatter = (dat) ->
+
+    dat = new Date(dat)
+    
+    monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul","Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    minDigits = (num, str) ->
+        str = String str
+        while str.length < num
+            str = '0' + str
+        str
+
+    str = ""
+    str += dat.getUTCFullYear()          + "-"
+    str += monthNames[dat.getUTCMonth()] + "-"
+    str += dat.getUTCDate()              + " "
+    
+
+    str += (minDigits 2, dat.getUTCHours())   + ":"
+    str += (minDigits 2, dat.getUTCMinutes()) + ":"
+    str += (minDigits 2, dat.getUTCSeconds()) + "."
+    str += (minDigits 3, dat.getUTCMilliseconds()) + " GMT"
+    
+###
+Cross platform accessor/mutator for element inner text
+###
+window.innerTextCompat = (self, value = null) ->
+    if document.getElementsByTagName("body")[0].innerText?
+        if value is null
+            return self.innerText
+        else
+            self.innerText = value
+    else
+        if value is null
+            return self.textContent
+        else
+            self.textContent = value
+    
+###
 This function adds a parameterizable radial marker to Highchart's list of
 marker styles.
 ###
@@ -94,6 +146,22 @@ Lightness: 0.3 -   0.95
 K-means
 ###
 globals.colors = ['#5E5A83', '#609B36', '#DC644F', '#9A8867', '#DA6694', '#40938C', '#A78E20', '#884646', '#546222', '#688CCF', '#529F69', '#415B62', '#AE8188', '#D1762F', '#408FB2', '#B18347', '#944B70', '#9F7FBC', '#C77967', '#914C2A', '#396B43', '#625744', '#C25562', '#735521', '#7D9080', '#715365', '#8A9044', '#C573B2', '#788AA2', '#EC5D7A']
+
+###
+Generate a list of dashes
+###
+globals.dashes = []
+
+globals.dashes.push 'Solid'
+globals.dashes.push 'ShortDot'
+globals.dashes.push 'ShortDash'
+globals.dashes.push 'Dot'
+
+globals.dashes.push 'ShortDashShortDot'
+globals.dashes.push 'DashDotDot'
+globals.dashes.push 'LongDashDotDotDot'
+
+globals.dashes.push 'LongDashDash'
  
 ###
 Generate a list of symbols and symbol rendering routines and then add them
@@ -101,33 +169,34 @@ in an order that is clear and easy to read.
 ###
 
 fanMagList           = [1, 1, 15/16, 7/8, 3/4, 1/4, 1/4, 3/4, 7/8, 15/16, 1]
-windmillLeftMagList  = [1, 1/2, 1/3, 1/4]
-windmillRightMagList = [1/4, 1/3, 1/2, 1]
 pieMagList           = [1,1,1,1,1,1,1,1,1,1,1,1,1,0]
 halfmoonMagList      = [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0]
+starMagList          = [Math.sqrt(2), 2/3]
 
 tempSymbolsMatrix = []
-symbolList        = ['circle', 'square', 'up-tri', 'down-tri', 'left-tri', 'right-tri', 'diamond']
+symbolList        = ['circle', 'square', 'diamond', '5-star', 'up-tri', 'down-tri', 'right-tri', 'left-tri', '6-star']
 
 tempSymbolsMatrix[tempSymbolsMatrix.length] = []
 
+addRadialMarkerStyle "blank", 1, 0, [0]
+
 tempSymbolsMatrix[tempSymbolsMatrix.length] = []
-for i in [2,3,4,6,10]
-	addRadialMarkerStyle "#{i}-fan", 3, 0, fanMagList
+for i in [5,6]
+        addRadialMarkerStyle "#{i}-star", i, 0.5, starMagList
+        #tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{i}-star"
+
+tempSymbolsMatrix[tempSymbolsMatrix.length] = []
+for i in [2,3,4,6]
+	addRadialMarkerStyle "#{i}-fan", i, 0, fanMagList
 	tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{i}-fan"
 
 tempSymbolsMatrix[tempSymbolsMatrix.length] = []
 for [phase, direction] in [[0, "down"],[1/4, "right"],[2/4, "up"],[3/4, "left"]]
-	addRadialMarkerStyle "#{direction}-tri", 3, phase
+	addRadialMarkerStyle "#{direction}-tri", 3, phase, [Math.sqrt(2)]
 	#tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{direction}-tri"
 
 tempSymbolsMatrix[tempSymbolsMatrix.length] = []
-for i in [2,3,4,6]
-	addRadialMarkerStyle "#{i}-windmillLeft", i, 0, windmillLeftMagList
-	tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{i}-windmillLeft"
-
-tempSymbolsMatrix[tempSymbolsMatrix.length] = []
-for i in [1,2,3,4,5,6,10,20]
+for i in [2,3,4,5]
 	addRadialMarkerStyle "#{i}-pie", i, 0, pieMagList
 	tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{i}-pie"
 	
@@ -135,11 +204,6 @@ tempSymbolsMatrix[tempSymbolsMatrix.length] = []
 for [phase, direction] in[[0, "right"],[1/4, "up"],[2/4, "left"],[3/4, "down"]]
 	addRadialMarkerStyle "#{direction}-halfmoon", 1, phase, halfmoonMagList
 	tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{direction}-halfmoon"
-
-tempSymbolsMatrix[tempSymbolsMatrix.length] = []
-for i in [2,3,4,6]
-	addRadialMarkerStyle "#{i}-windmillRight", i, 0, windmillRightMagList
-	tempSymbolsMatrix[tempSymbolsMatrix.length-1].push "#{i}-windmillRight"
 
 while tempSymbolsMatrixCount != 0
     tempSymbolsMatrixCount = tempSymbolsMatrix.length
@@ -155,9 +219,4 @@ while tempSymbolsMatrixCount != 0
 Store the list
 ###
 globals.symbols = symbolList
-
-
-
-
-
 

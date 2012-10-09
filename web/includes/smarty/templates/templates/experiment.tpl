@@ -25,6 +25,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  *}
+
+<script> 
+    var default_vis = '{$meta.default_vis}';
+{literal}
+    $(document).ready(function(){
+                $( ".exp_tools a").button().width('100px').css({margin:'0px 0px 6px 0px',fontSize:'1em',fontFamily:'Trebuchet MS, sans-serif',fontWeight:'bold'});
+                $("#defult_vis_selector").val(default_vis);
+    });
+{/literal}    
+</script>
+
 <div id="main">
 	{ include file="parts/errors.tpl" }
 	<div id="details" style="min-height:60px; margin:0px 0px 0px 0px;">
@@ -92,14 +103,29 @@
 					</tr>
 				{ /if }
 				{ if $user.user_id == $meta.owner_id or $user.administrator == 1 }
-                    <tr>
-                        <td class="heading" valign="top">Closed:</td>
-                        <td>
-                            <input type="checkbox" id="close_experiment" name="close_experiment" value="{$meta.experiment_id}" {if $meta.closed == 1}checked{/if}/>
-                            <span id="close_loading_message" style="display:none;">Loading...</span>
-                        </td>
-                    </tr>
-                { /if }
+                                    <tr>
+                                        <td class="heading" valign="top">Closed:</td>
+                                        <td>
+                                            <input type="checkbox" id="close_experiment" name="close_experiment" value="{$meta.experiment_id}" {if $meta.closed == 1}checked{/if}/>
+                                            <span id="close_loading_message" style="display:none;">Loading...</span>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="heading" valign="top">Default Vis:</td>
+                                        <td>
+                                            <select id="defult_vis_selector">
+                                                <option value="Map">Map</option>
+                                                <option value="Timeline">Timeline</option>
+                                                <option value="Scatter">Scatter</option>
+                                                <option value="Bar">Bar</option>
+                                                <option value="Histogram">Histogram</option>
+                                                <option value="Motion">Motion</option>
+                                                <option value="Pictures" >Pictures</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                { /if }
 			</table>
 		</div>
 	</div>
@@ -123,23 +149,19 @@
     	        <div class="featured_body" style="padding:6px 0px 6px 6px;">
     	            { if !$user.guest }
 
-						{ if $meta.experiment_id == 350 }
-    	                	<div style="margin:0px 0px 6px 0px;"><input type="submit" style="width:73px;" value="Contribute" onclick="window.location.href='./tsor.php';"/> - Contribute data to this experiment.</div>
-						{ else }
-                            <div id="contribute" style="margin:0px 0px 6px 0px;" {if $meta.closed == 1 }hidden="hidden" {/if} ><input type="submit" style="width:73px;" value="Contribute" onclick="window.location.href='upload.php?id={$meta.experiment_id}';" /> - Contribute data to this experiment.</div>
-						{ /if }
+			{ if $meta.experiment_id == 350 }
+    	                	<div class="exp_tools"><a href="./tsor.php">Contribute</a> - Contribute data to this experiment.</div>
+			{ else }
+                            <div class="exp_tools" {if $meta.closed == 1 }hidden="hidden" {/if} > <a href="./upload.php?id={$meta.experiment_id}">Contribute</a> - Contribute data to this experiment.</div>
+		        { /if }
 
-    	                <div style="margin:0px 0px 6px 0px;"><input type="submit" style="width:73px;" value="Export" onclick="loadExport({$meta.experiment_id});"/> - Download data from selected sessions.</div>
-    	                <div style="margin:0px 0px 6px 0px;"><input type="submit" style="width:73px;" value="Activity" onclick="createActivity({$meta.experiment_id});"/> - Create an activity for users to complete.</div>
+    	                <div class="exp_tools"><a href="#" onclick="loadExport({$meta.experiment_id});">Export</a> - Download data from selected sessions.</div>
     	                { if $user.user_id == $meta.owner_id or $user.administrator == 1 }
-    	                    <div style="margin:0px 0px 6px 0px;"><input type="submit" style="width:73px;" value="Edit" onclick="window.location.href='experiment-edit.php?id={$meta.experiment_id}'"/> - Edit this experiment.</div>
-    	                    <div style="margin:0px 0px 6px 0px;"><input type="submit" style="width:73px;" value="Image" onclick="window.location.href='pickexpimage.php?id={$meta.experiment_id}'"/> - Set the picture that will show should this experiment be featured.</div>
-    	                { /if }
+    	                    <div class="exp_tools"><a href="experiment-edit.php?id={$meta.experiment_id}">Edit</a> - Edit this experiment.</div>
+    	                    <div class="exp_tools"><a href="pickexpimage.php?id={$meta.experiment_id}">Image</a> - Set the picture that will show should this experiment be featured.</div>
+                        { /if }
     	            { /if }
-    	            <div><input type="submit" style="width:73px;" value="{if not $activity}Visualize{else}Complete{/if}" onclick="loadVis({$meta.experiment_id}, {if $activity}true{else}false{/if});"/> - {if $activity}View data for this experiment and solve for the prompt.{else}Select sessions below to visualize data{/if}</div>
-    	            { if not $activity and $user.administrator == $user.administrator }
-            	        <div><input type="submit" style="margin:6px 0px 0px 0px; width:73px;" value="{if not $activity}Vis Beta{else}Complete{/if}" onclick="loadVis2({$meta.experiment_id}, {if $activity}true{else}false{/if});"/> - Use our visualizations beta to examine your data. </div>
-            	    { /if }
+            	    <div class="exp_tools"><a href="#" onclick="loadVis2({$meta.experiment_id});">Visualize</a> - Use our visualizations beta to examine your data. </div>
     	        </div>
     	    </div>
 	    { /if }
@@ -167,7 +189,7 @@
                                     </div>
                                     
                                     <div class="session_name">
-                                        <a href="newvis.php?sessions={ $session.session_id }">{ $session.name|truncate:27 }</a>
+                                        <a href="highvis.php?sessions={ $session.session_id }">{ $session.name|truncate:27 }</a>
                                     </div>
                                     
                                     <div class="pictures_maybe">
@@ -254,7 +276,7 @@
     				<table width="100%">
     					{ foreach from=$vises item=vis }
     						<tr>
-    							<td><a href="visdir.php?id={ $vis.vis_id }">{ $vis.name }</a></td>
+    							<td><a href="highvis.php?vid={ $vis.vid }">{ $vis.title }</a></td>
     						</tr>
     					{ /foreach }
     				</table>

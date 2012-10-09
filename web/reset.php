@@ -31,40 +31,45 @@ require_once 'includes/database.php';
 
 $errors = array();
 
-if(isset($_SERVER[SERVER_ADDR])) {
-     $server = $_SERVER[SERVER_ADDR];
+if(isset($_SERVER[SERVER_NAME])) {
+    $server = $_SERVER[SERVER_NAME];
 }
+
 
 if(isset($_POST['email'])) { 
-  $email = safeString($_POST['email']); 
-  $tmp = $db->query('select * from users where email="' . $email . '"');
+    $email = safeString($_POST['email']);
+    $auth = getAuthForEmail($email);
+    if($auth != null){ 
+        
+        $subject = 'Password Reset Link';
+        $message = 'It seems you\'ve forgotten your password. Click <a href="' . $server . '/reset.php?auth=' . $auth . '"> here </a> to reset your password';
+        
+        
+        $headers = "MIME-Version: 1.0" . "\r\n";
+        $headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
+        
+        $headers .= 'From: no-reply@' . $server;
 
-  if(isset($tmp[0])) {
-    $auth = $tmp[0]['auth'];
-
-    $subject = 'Password Reset Link';
-    $message = 'It seems you\'ve forgotten your password. Click <a href="' . $server . '/reset.php?auth=' . $auth . '"> here </a> to reset your password';
-
-
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
-
-    $headers .= 'From: admin@127.0.0.1';
-
-    if (  mail('"'.$email.'"', $subject, $message, $headers)) {
-      $smarty->assign('success', 1);
+        error_log("MAIL DEBUGvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv");
+        error_log($message);
+        error_log($headers);
+        error_log("MAIL DEBUG^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        
+        if (  mail('"'.$email.'"', $subject, $message, $headers)) {
+            $smarty->assign('success', 1);
+        } else {
+            $smarty->assign('success', 0);
+        }
+        
+ 
+        
+        $smarty->assign('content', $smarty->fetch('reset.tpl'));
+    } else {
+        array_push($errors,"Email address not registered with iSENSE");
     }
-    else {
-      $smarty->assign('success', 0);
-    }
-
-  } else {
-      $smarty->assign('success', -1);
-  }
-  $smarty->assign('content', $smarty->fetch('reset.tpl'));
+    
 }
-
-
+    
 if( isset($_GET['auth']) && !isset($_POST['pass1']) ) {
   $smarty->assign('auth', $_GET['auth'] );
 } 
